@@ -19,6 +19,32 @@
         .section-badge { position: absolute; top: 15px; left: 15px; padding: 6px 14px; border-radius: 8px; font-size: 0.8rem; font-weight: bold; z-index: 10; }
         .btn-filter { border-radius: 50px; margin: 5px; padding: 8px 20px; font-weight: 500; }
 
+        /* 💡 試聽按鈕樣式 */
+        .audio-btn {
+            position: absolute;
+            bottom: 75px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #dee2e6;
+            border-radius: 50%;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.2s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            z-index: 20;
+            font-size: 1.2rem;
+        }
+        .audio-btn:hover {
+            background: #0d47a1;
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 6px 12px rgba(13,71,161,0.3);
+        }
+
         /* 💡 燈箱 (Modal) 樣式 */
         #imageModal {
             display: none;
@@ -45,6 +71,9 @@
     </style>
 </head>
 <body>
+
+<!-- 隱藏的音訊播放器 -->
+<audio id="globalPlayer" style="display:none;"></audio>
 
 <!-- 燈箱 HTML -->
 <div id="imageModal" onclick="this.style.display='none'">
@@ -79,26 +108,48 @@
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbyPIMyKuki7cpI82cglROELDGZetoRYA_zzrGfr79z7J4K8_FDI_VZURY-HCN529KbF/exec"; 
+    const API_URL =  "https://script.google.com/macros/s/AKfycbzGGT2NZPws_WxmZ5ITio2rs3VEcMjJ8GbI3PIoXDn6cWXU0FDw8Y_PD5bxyFpT8qDV/exec"; 
     const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSd9kcK2I_emfABs3VKOT-HBASeoB6TGq0OqgVlrI2a-zfTN5w/viewform?usp=dialog";
     let allInstruments = [];
 
     function getSectionStyle(name) {
         const s = name ? name.toString().trim() : "";
-        if (s.includes("拉弦")) return { bg: "#e8f5e9", text: "#1b5e20" };
-        if (s.includes("低音")) return { bg: "#fff3e0", text: "#e65100" };
-        if (s.includes("彈撥")) return { bg: "#e3f2fd", text: "#0d47a1" };
-        if (s.includes("吹管")) return { bg: "#e8f5e9", text: "#1b5e20" };
-        if (s.includes("打擊")) return { bg: "#f3e5f5", text: "#4a148c" };
+        if (s.includes("拉弦")) return { bg: "#e3f2fd", text: "#0d47a1" }; // 修正為藍色系
+        if (s.includes("低音")) return { bg: "#efebe9", text: "#4e342e" }; // 修正為褐色系
+        if (s.includes("彈撥")) return { bg: "#fff3e0", text: "#e65100" }; // 修正為橘色系
+        if (s.includes("吹管")) return { bg: "#e8f5e9", text: "#1b5e20" }; // 綠色系
+        if (s.includes("打擊")) return { bg: "#f3e5f5", text: "#4a148c" }; // 紫色系
         return { bg: "#ffffff", text: "#333" };
     }
 
-    // 💡 放大圖片的函式
+    // 放大圖片的函式
     function openModal(imgSrc) {
         const modal = document.getElementById('imageModal');
         const modalImg = document.getElementById('modalImg');
         modal.style.display = "flex";
         modalImg.src = imgSrc;
+    }
+
+    // 💡 播放音色函式
+    function playSound(audioUrl) {
+        event.stopPropagation(); // 防止觸發圖片放大功能
+        const player = document.getElementById('globalPlayer');
+        
+        if (!audioUrl || audioUrl.toString().trim() === "") {
+            alert("此樂器暫無試聽音檔 🔊");
+            return;
+        }
+        
+        // 如果點擊同一個正在播放的音檔，就暫停
+        if (player.src === audioUrl && !player.paused) {
+            player.pause();
+            return;
+        }
+        
+        player.src = audioUrl;
+        player.play().catch(error => {
+            alert("無法播放此音檔，請檢查網址是否正確。");
+        });
     }
 
     async function loadData() {
@@ -118,6 +169,7 @@
             const isAvail = (item.status && item.status.toString().trim() === "可借用");
             const style = getSectionStyle(item.section);
             const imgSrc = item.image || 'https://via.placeholder.com/400x300';
+            const audioSrc = item.audio || ''; // 這裡接收來自 GAS 的試聽連結
             
             return `
                 <div class="col-md-6 col-lg-4">
@@ -125,8 +177,13 @@
                         <div class="section-badge" style="background:${style.bg}; color:${style.text}">${item.section || '一般'}</div>
                         <span class="badge ${isAvail ? 'bg-success' : 'bg-danger'} status-badge">${item.status}</span>
                         
-                        <!-- 💡 點擊圖片觸發放大 -->
+                        <!-- 點擊圖片觸發放大 -->
                         <img src="${imgSrc}" class="card-img-top instrument-img" onclick="openModal('${imgSrc}')">
+                        
+                        <!-- 💡 試聽音色按鈕 -->
+                        <div class="audio-btn" onclick="playSound('${audioSrc}')" title="試聽音色">
+                            🔊
+                        </div>
                         
                         <div class="card-body d-flex flex-column">
                             <h5 class="card-title fw-bold">${item.name}</h5>
